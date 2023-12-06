@@ -10,6 +10,8 @@ function parseInput( input: string ) {
 outputAnswers(
     testInput,
     officialInput,
+    testInput,
+    officialInput,
     // function that solves part 1
     ( input: string ) => parseInput( input ),
     // function that solves part 2
