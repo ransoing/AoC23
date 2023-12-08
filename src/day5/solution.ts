@@ -70,12 +70,13 @@ function parseInput( input: string, parseSeedsAsPairs = false ) {
 
 
 outputAnswers(
-    testInput,
-    officialInput,
-    testInput,
-    officialInput,
     // function that solves part 1
     ( input: string ) => parseInput( input ),
     // function that solves part 2
-    ( input: string ) => parseInput( input, true )
+    ( input: string ) => parseInput( input, true ),
+
+    testInput,
+    officialInput,
+    testInput,
+    officialInput
 );

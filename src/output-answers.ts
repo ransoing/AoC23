@@ -1,25 +1,25 @@
 /** Outputs answers to the console */
 export function outputAnswers(
-    part1TestInput: string,
-    part1OfficialInput: string,
-    part2TestInput: string,
-    part2OfficialInput: string,
     part1Solver: (input: string) => any,
-    part2Solver: (input: string) => any
+    part2Solver: (input: string) => any,
+    part1TestInput?: string,
+    part1OfficialInput?: string,
+    part2TestInput?: string,
+    part2OfficialInput?: string
 ) {
     const runs: [ string, () => any ][] = [
         [
             `Part 1 (example input)`,
-            () => part1Solver( part1TestInput )
+            () => part1TestInput ? part1Solver( part1TestInput ) : null
         ], [
             `Part 1 (full input)`,
-            () => part1Solver( part1OfficialInput )
+            () => part1OfficialInput ? part1Solver( part1OfficialInput ) : null
         ], [
             `Part 2 (example input)`,
-            () => part2Solver( part2TestInput )
+            () => part2TestInput ? part2Solver( part2TestInput ) : null
         ], [
             `Part 2 (full input)`,
-            () => part2Solver( part2OfficialInput )
+            () => part2OfficialInput ? part2Solver( part2OfficialInput ) : null
         ]
     ];
 

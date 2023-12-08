@@ -46,12 +46,13 @@ function solve2( input: string ) {
 }
 
 outputAnswers(
-    testInput,
-    officialInput,
-    testInput,
-    officialInput,
     // function that solves part 1
     ( input: string ) => solve1( input ),
     // function that solves part 2
-    ( input: string ) => solve2( input )
+    ( input: string ) => solve2( input ),
+
+    testInput,
+    officialInput,
+    testInput,
+    officialInput
 );

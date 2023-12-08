@@ -19,11 +19,6 @@ function parseCards( input: string ) {
 }
 
 outputAnswers(
-    testInput,
-    officialInput,
-    testInput,
-    officialInput,
-
     // function that solves part 1
     ( input: string ) => sum(
         // for 0 winning numbers, we get 2^-1 which is 0.5. Flooring this results in a correct score of 0. For all other counts of
@@ -39,5 +34,10 @@ outputAnswers(
             cards.slice( i + 1, i + 1 + card.wins ).forEach( laterCard => laterCard.copies += card.copies );
             return total + card.copies;
         }, 0 );
-    }
+    },
+
+    testInput,
+    officialInput,
+    testInput,
+    officialInput
 );

@@ -41,10 +41,11 @@ function toNumber( str: string ): number {
 }
 
 outputAnswers(
+    ( input: string ) => parseInput( input ), // function that solves part 1
+    ( input: string ) => parseInput( input, true ), // function that solves part 2
+
     testInput,
     officialInput,
     part2TestInput,
-    officialInput,
-    ( input: string ) => parseInput( input ), // function that solves part 1
-    ( input: string ) => parseInput( input, true ) // function that solves part 2
+    officialInput
 );
