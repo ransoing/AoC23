@@ -1,3 +1,3 @@
-export const testInput = ``;
+export const exampleInput = ``;
 
-export const officialInput = ``;
+export const fullInput = ``;

@@ -1,6 +1,6 @@
 import { sum } from 'lodash';
 import { outputAnswers } from '../output-answers';
-import { officialInput, testInput } from './inputs';
+import { fullInput, exampleInput } from './inputs';
 import { XYZ } from '../util/xyz';
 
 function parseInput( input: string ) {
@@ -8,10 +8,10 @@ function parseInput( input: string ) {
 }
 
 outputAnswers(
-    testInput,
-    officialInput,
-    testInput,
-    officialInput,
+    exampleInput,
+    fullInput,
+    exampleInput,
+    fullInput,
     // function that solves part 1
     ( input: string ) => parseInput( input ),
     // function that solves part 2
