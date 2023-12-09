@@ -28,7 +28,7 @@ export function outputAnswers(
         const solution = run[1]();
         let ms = performance.now() - start;
         ms = Math.round( ms * 100 ) / 100;
-        const displayedTime = ms > 9999 ? ( ms / 1000 ).toString() + ' s' : ms.toString() + ' ms'
+        const displayedTime = ms > 999 ? ( ms / 1000 ).toString() + ' s' : ms.toString() + ' ms'
         console.log( `${run[0]} - runtime: ${displayedTime} - solution:`, solution );
     });
 }

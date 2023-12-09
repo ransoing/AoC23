@@ -1,6 +1,7 @@
 import { chunk } from 'lodash';
 import { outputAnswers } from '../output-answers';
 import { officialInput, testInput } from './inputs';
+import { parseIntegers } from '../util/misc';
 
 /**
  * My solution to day 2 uses "range arithmetic". Rather than brute-forcing a solution, I compare the source and destination ranges to
@@ -21,21 +22,16 @@ class Range {
     }
 }
 
-/** returns an array of multi-digit numbers found in a string, parsed as integers */
-function parseNums( str: string ): number[] {
-    return [ ...str.matchAll( /\d+/g ) ].map( match => parseInt(match[0]) );
-}
-
 function parseInput( input: string, parseSeedsAsPairs = false ) {
     const sections = input.split( '\n\n' );
     // `ranges` starts out tracking seeds, but tracks the current mapped values throughout the loop
     let ranges = parseSeedsAsPairs ?
-        chunk( parseNums(sections[0]), 2 ).map( chunk => new Range(chunk[0], chunk[1]) ) :
-        parseNums( sections[0] ).map( num => new Range(num, 1) );
+        chunk( parseIntegers(sections[0]), 2 ).map( chunk => new Range(chunk[0], chunk[1]) ) :
+        parseIntegers( sections[0] ).map( num => new Range(num, 1) );
     sections.slice( 1 ).forEach( section => {
         // parse the mappings, and sort them by incrementing source start value
         const mappings = section.split( '\n' ).slice( 1 ).map( mapLine => {
-            const matches = parseNums( mapLine );
+            const matches = parseIntegers( mapLine );
             return { destination: new Range(matches[0], matches[2]), source: new Range(matches[1], matches[2]) };
         }).sort( (mapA, mapB) => mapA.source.start - mapB.source.start );
         // create a new array of ranges, which represent mapped values
