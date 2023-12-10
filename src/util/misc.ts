@@ -1,8 +1,8 @@
 import { intersection } from 'lodash';
 
-/** returns an array of multi-digit numbers found in a string, parsed as integers */
+/** returns an array of multi-digit numbers (possibly negative ones) found in a string, parsed as integers */
 export function parseIntegers( str: string ): number[] {
-    return [ ...str.matchAll( /\d+/g ) ].map( match => parseInt(match[0]) );
+    return [ ...str.matchAll( /-?\d+/g ) ].map( match => parseInt(match[0]) );
 }
 
 /** returns the product of all numbers in the array */
@@ -28,7 +28,9 @@ export function factorsOf( num: number ): number[] {
 
 /**
  * given multiple concurrent repeating patterns each with a given number of steps and starting at step 0, finds the least number of
- * steps > 0 where all patterns once again reach step 0
+ * steps > 0 where all patterns once again simultaneously reach step 0.
+ * In other words, finds the lowest number > 0 that is evenly divisible by all the given numbers.
+ * Ex. jointFrequency([ 4, 5, 10 ]) = 20
  */
 export function jointFrequency( patternLengths: number[] ): number {
     return patternLengths.reduce( (total, steps) => {
