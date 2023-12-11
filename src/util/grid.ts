@@ -1,8 +1,8 @@
-import { identity, unzip } from "lodash";
+import { identity, unzip } from 'lodash';
 
 /** parses a text input as a grid, with elements accessible at grid[y][x] */
-export function parseAsYxGrid<T>( input: string, mutateElement: (el: string) => T = identity ): T[][] {
-    return input.split( '\n' ).map( line => line.split('').map(mutateElement) );
+export function parseAsYxGrid( input: string ) {
+    return input.split( '\n' ).map( line => line.split('') );
 }
 
 /**

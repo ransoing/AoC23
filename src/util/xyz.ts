@@ -3,16 +3,52 @@ import { sum } from 'lodash';
 type Coordinate = XYZ | number[];
 
 interface IBfsOptions {
-    /** a function to get the neighbors of this point */
+    /**
+     * A function to get the neighbors of this point.
+     * @default p => p.neighbors()
+     */
     getNeighbors?: (p: XYZ) => XYZ[];
-    /** determines whether a neighbor point can be visited, in addition to normal checks of whether the point has already been visited */
+    /**
+     * Determines whether a neighbor point can be visited, in addition to normal checks of whether the point has already been visited,
+     * determined by if the neighbor's key as defined by getVisitedKey is already in the list of visited point keys.
+     * @default () => true
+     */
     canVisitNeighbor?: (neighbor: XYZ, p: XYZ) => boolean;
-    /** determines whether the BFS should stop when visiting a new point */
+    /**
+     * Determines whether the BFS should stop when visiting a new point.
+     * @default () => false
+     */
     shouldStop?: (p: XYZ) => boolean;
-    /** performs some action on every point before it's visited */
-    tap?: (p: XYZ) => void;
-    /** returns the string to add to the 'visitedPoints' set */
+    /**
+     * Performs some action on every point before it's visited.
+     * @default () => {}
+     */
+    tap?: (p: XYZ, iteration: number) => void;
+    /** 
+     * Returns the string to add to the 'visitedPoints' set when a point is visited. This is used to determine whether a neighbor can be
+     * visited, in addition to the return value of the `canVisitNeighbor` function.
+     * @default p => p.toString()
+     */
     getVisitedKey?: (p: XYZ, iteration: number) => string;
+}
+
+export interface IBfsResult {
+    /**
+     * all the point keys that the BFS visited, on all paths taken, represented by keys from the `getVisitedKey` function.
+     * Includes start and end points.
+     */
+    visitedKeys: Set<string>;
+    /** an array of all the unique points visited by all paths taken, including the starting and ending points */
+    visitedPoints: XYZ[];
+    /** the last XYZ point visited before the BFS stopped */
+    endPoint: XYZ;
+    /** the length of the path the BFS took to get to `endPoint` */
+    pathLength: number;
+}
+
+interface IBfsQueueItem {
+    point: XYZ;
+    iteration: number;
 }
 
 /** A class that gives convenient tools for dealing with 2D or 3D coordinates */
@@ -31,6 +67,11 @@ export class XYZ {
             sum( xyzs.map(c => c.y) ),
             sum( xyzs.map(c => c.z) )
         ]);
+    }
+
+    /** converts a string like '3,6,2' a number array and uses that to create an XYZ object */
+    static fromString( str: string ) {
+        return new XYZ( str.split(',').map(c => parseInt(c)) );
     }
 
     public x: number;
@@ -146,10 +187,11 @@ export class XYZ {
 
     /**
      * Performs a breadth-first search starting at the point the method is called on.
-     * Returns the set of visited points.
-     * Unless otherwise specified, stops when it runs out of possible places to travel.
+     * Returns the set of visited points and the number if iterations it took to finish.
+     * Unless otherwise specified, stops when it runs out of possible places to travel and avoids revisiting points that any path
+     * has visited.
      */
-    bfs( options: IBfsOptions ) {
+    bfs( options: IBfsOptions ): IBfsResult {
         const defaultOptions: IBfsOptions = {
             getNeighbors: p => p.neighbors(),
             canVisitNeighbor: () => true,
@@ -158,30 +200,31 @@ export class XYZ {
             tap: () => {}
         };
         const o = Object.assign( {}, defaultOptions, options );
-        const visitedPoints = new Set<string>(); // XYZ strings
-        const queue: {
-            point: XYZ,
-            iteration: number
-        }[] = [{ point: this, iteration: 0 }];
-        visitedPoints.add( o.getVisitedKey(this, 0) );
-        let iterations = 0;
+        const visitedKeys = new Set<string>(); // XYZ strings, also maybe combined with iteration strings?
+        const visitedPoints = new Set<string>(); // used just for returning info, not used during the BFS algorithm
+        const queue: IBfsQueueItem[] = [{ point: this, iteration: 0 }];
+        visitedKeys.add( o.getVisitedKey(this, 0) );
+        visitedPoints.add( this.toString() );
+        let current: IBfsQueueItem;
         while ( queue.length > 0 ) {
-            const current = queue.pop();
+            current = queue.pop();
             if ( o.shouldStop(current.point) ) {
                 break;
             }
-            iterations++;
             o.getNeighbors( current.point ).filter(
-                n => o.canVisitNeighbor( n, current.point ) && !visitedPoints.has( o.getVisitedKey(n, current.iteration + 1) )
+                n => o.canVisitNeighbor( n, current.point ) && !visitedKeys.has( o.getVisitedKey(n, current.iteration + 1) )
             ).forEach( p => {
-                o.tap( p );
-                visitedPoints.add( o.getVisitedKey(p, current.iteration + 1) );
+                o.tap( p, current.iteration + 1 );
+                visitedKeys.add( o.getVisitedKey(p, current.iteration + 1) );
+                visitedPoints.add( p.toString() );
                 queue.unshift({ point: p, iteration: current.iteration + 1 });
             });
         }
         return {
-            visited: visitedPoints,
-            iterations: iterations
+            visitedKeys: visitedKeys,
+            visitedPoints: [ ...visitedPoints.values() ].map( XYZ.fromString ),
+            endPoint: current.point,
+            pathLength: current.iteration
         };
     }
 }
