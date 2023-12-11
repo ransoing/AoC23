@@ -147,6 +147,7 @@ export class XYZ {
     /**
      * Performs a breadth-first search starting at the point the method is called on.
      * Returns the set of visited points.
+     * Unless otherwise specified, stops when it runs out of possible places to travel.
      */
     bfs( options: IBfsOptions ) {
         const defaultOptions: IBfsOptions = {
