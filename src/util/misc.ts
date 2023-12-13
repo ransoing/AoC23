@@ -1,4 +1,4 @@
-import { intersection } from 'lodash';
+import { intersection, range } from 'lodash';
 
 /** returns an array of multi-digit numbers (possibly negative ones) found in a string, parsed as integers */
 export function parseIntegers( str: string ): number[] {
@@ -37,4 +37,14 @@ export function jointFrequency( patternLengths: number[] ): number {
         const largestFactor = Math.max( ...intersection( ...[total, steps].map(n => factorsOf(n)) ) );
         return ( total * steps ) / largestFactor;
     }, 1 );
+}
+
+export function numDiffs( a: string, b: string ) {
+    let diffs = 0;
+    for ( let i = 0; i < a.length; i++ ) {
+        if ( a[i] !== b[i] ) {
+            diffs++;
+        }
+    }
+    return diffs;
 }
