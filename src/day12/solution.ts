@@ -7,6 +7,8 @@ function solve( input: string, repeatFactor: number ) {
     return sum(
         input.split( '\n' ).map( line => {
             const split = line.split( ' ' );
+            // the memoize cache isn't very useful across different lines of input, so clear its cache
+            consumeLine.cache.clear();
             return consumeLine(
                 new Array( repeatFactor ).fill( split[0] ).join( '?' ),
                 new Array( repeatFactor ).fill( parseIntegers(split[1]) ).flat()

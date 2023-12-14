@@ -3,6 +3,7 @@ import { outputAnswers } from '../output-answers';
 import { fullInput, exampleInput } from './inputs';
 import { parseIntegers, product } from '../util/misc';
 import { XYZ } from '../util/xyz';
+import { parseAsYxGrid } from '../util/grid';
 
 function solve( input: string ) {
     
@@ -15,7 +16,7 @@ outputAnswers(
     ( input: string ) => null,
 
     exampleInput,
-    fullInput,
-    exampleInput,
-    fullInput
+    // fullInput,
+    // exampleInput,
+    // fullInput
 );
