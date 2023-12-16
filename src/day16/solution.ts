@@ -1,7 +1,7 @@
 import { outputAnswers } from '../output-answers';
-import { fullInput, exampleInput } from './inputs';
-import { XYZ } from '../util/xyz';
+import { Coordinate, XYZ } from '../util/xyz';
 import { parseAsYxGrid } from '../util/grid';
+import { readTextFile } from '../util/misc';
 
 interface IBeam {
     location: XYZ;
@@ -16,6 +16,13 @@ function getNumEnergizedTiles( grid: string[][], beamStart: IBeam ): number {
     travel( beamStart );
     return tileIsEnergized.size;
 
+    function step( loc: IBeam, direction: Coordinate ) {
+        travel({
+            location: loc.location.plus( direction ),
+            direction: XYZ.normalize( direction )
+        });
+    }
+
     function travel( loc: IBeam ) {
         const tile = loc.location.valueIn( grid );
         const state = `${loc.location}:${loc.direction}`;
@@ -25,57 +32,27 @@ function getNumEnergizedTiles( grid: string[][], beamStart: IBeam ): number {
         }
         tileIsEnergized.add( loc.location.toString() );
         tileStates.add( `${loc.location}:${loc.direction}` );
+
         if ( tile === '.' ) {
-            // move in the given direction
-            travel({ location: loc.location.plus(loc.direction), direction: loc.direction });
+            step( loc, loc.direction ) // travel through
         } else if ( tile === '|' ) {
             if ( loc.direction.x === 0 ) {
-                // travel through
-                travel({ location: loc.location.plus(loc.direction), direction: loc.direction });
+                step( loc, loc.direction ); // travel through
             } else {
-                // travel up and down
-                travel({
-                    location: loc.location.plus([ 0, -1 ]),
-                    direction: new XYZ([ 0, -1 ])
-                });
-                travel({
-                    location: loc.location.plus([ 0, 1 ]),
-                    direction: new XYZ([ 0, 1 ])
-                });
+                step( loc, [ 0, -1 ] ); // travel up
+                step( loc, [ 0, 1 ] ); // travel down
             }
         } else if ( tile === '-' ) {
             if ( loc.direction.y === 0 ) {
-                // travel through
-                travel({ location: loc.location.plus(loc.direction), direction: loc.direction });
+                step( loc, loc.direction ) // travel through
             } else {
-                // travel left and right
-                travel({
-                    location: loc.location.plus([ -1, 0 ]),
-                    direction: new XYZ([ -1, 0 ])
-                });
-                travel({
-                    location: loc.location.plus([ 1, 0 ]),
-                    direction: new XYZ([ 1, 0 ])
-                });
+                step( loc, [ -1, 0 ] ); // travel left
+                step( loc, [ 1, 0 ] ); // travel right
             }
         } else if ( tile === '/' ) {
-            const diff = loc.direction.x === 1 ? [ 0, -1 ] :
-                loc.direction.x === -1 ? [ 0, 1 ] :
-                loc.direction.y === 1 ? [ -1, 0 ] :
-                [ 1, 0 ];
-            travel({
-                location: loc.location.plus( diff ),
-                direction: new XYZ( diff )
-            });
-        } else if ( tile === '!' ) { // backslash \
-            const diff = loc.direction.x === 1 ? [ 0, 1 ] :
-                loc.direction.x === -1 ? [ 0, -1 ] :
-                loc.direction.y === 1 ? [ 1, 0 ] :
-                [ -1, 0 ];
-            travel({
-                location: loc.location.plus( diff ),
-                direction: new XYZ( diff )
-            });
+            step( loc, [ -loc.direction.y, -loc.direction.x ] );
+        } else if ( tile === '\\' ) {
+            step( loc, [ loc.direction.y, loc.direction.x ] );
         }
     }
 }
@@ -83,37 +60,35 @@ function getNumEnergizedTiles( grid: string[][], beamStart: IBeam ): number {
 function solve2( input: string ) {
     const grid = parseAsYxGrid( input );
     // try shooting a beam in from every edge space
-    // try left and right sides
-    let maxEnergized = 0;
-    grid.forEach( (_, y) => {
-        maxEnergized = Math.max(
-            maxEnergized,
-            getNumEnergizedTiles( grid, {
-                location: new XYZ([0, y]),
-                direction: new XYZ([1, 0])
-            }),
-            getNumEnergizedTiles( grid, {
-                location: new XYZ([grid[0].length - 1, y]),
-                direction: new XYZ([-1, 0])
-            })
-        );
-    });
-    // try top and bottom sides
-    grid[0].forEach( (_, x) => {
-        maxEnergized = Math.max(
-            maxEnergized,
-            getNumEnergizedTiles( grid, {
-                location: new XYZ([x, 0]),
-                direction: new XYZ([0, 1])
-            }),
-            getNumEnergizedTiles( grid, {
-                location: new XYZ([x, grid.length - 1]),
-                direction: new XYZ([0, -1])
-            })
-        );
-    });
 
-    return maxEnergized;
+    // try left and right sides
+    return Math.max(
+        ...grid.map( (_, y) => {
+            return Math.max(
+                getNumEnergizedTiles( grid, {
+                    location: new XYZ([0, y]),
+                    direction: new XYZ([1, 0])
+                }),
+                getNumEnergizedTiles( grid, {
+                    location: new XYZ([grid[0].length - 1, y]),
+                    direction: new XYZ([-1, 0])
+                })
+            );
+        }),
+        // try top and bottom sides
+        ...grid[0].map( (_, x) => {
+            return Math.max(
+                getNumEnergizedTiles( grid, {
+                    location: new XYZ([x, 0]),
+                    direction: new XYZ([0, 1])
+                }),
+                getNumEnergizedTiles( grid, {
+                    location: new XYZ([x, grid.length - 1]),
+                    direction: new XYZ([0, -1])
+                })
+            );
+        })
+    );
 }
 
 outputAnswers(
@@ -128,8 +103,8 @@ outputAnswers(
     // function that solves part 2
     ( input: string ) => solve2( input ),
 
-    exampleInput,
-    fullInput,
-    exampleInput,
-    fullInput
+    readTextFile( `${__dirname}/example-input` ),
+    readTextFile( `${__dirname}/full-input` ),
+    readTextFile( `${__dirname}/example-input` ),
+    readTextFile( `${__dirname}/full-input` )
 );

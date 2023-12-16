@@ -1,6 +1,6 @@
 import { sum } from 'lodash';
 
-type Coordinate = XYZ | number[];
+export type Coordinate = XYZ | number[];
 
 interface IBfsOptions {
     /**
