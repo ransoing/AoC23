@@ -5,6 +5,7 @@ export type Coordinate = XYZ | number[];
 export interface IFloodFillOptions {
     /**
      * A function to get the neighbors of this point.
+     * Typically you would call `p.neighbors()` or `p.neighbors3D()`
      * @default p => p.neighbors()
      */
     getNeighbors?: (p: XYZ) => XYZ[];
@@ -31,19 +32,23 @@ export interface IPathfindingOptions {
     target: XYZ;
     /**
      * A function to get the neighbors of this point - those that can be traveled to as well as those that can't.
+     * A "neighbor" is where the traveler is allowed to go from here.
      * Typically you would call `p.neighbors()` or `p.neighbors3D()`
+     * The point in the last item of `history` is the same as `p`.
      * @default p => p.neighbors() (gets orthogonal 2D neighbors)
      */
-    getNeighbors?: (p: XYZ) => XYZ[];
+    getNeighbors?: (p: XYZ, history?: IPathHistoryItem[]) => XYZ[];
     /**
      * Determines whether a neighbor point can be visited. If left to the default, the BFS search will search an infinitely large grid.
      * This is called in addition to `canRevisitPoint` to determine if the BFS search can move to a point.
-     * The last item in the `past` array is the same as the `from` point.
+     * The point in the last item in the `history` array is the same as the `from` point.
      * 
      * @default () => true
      */
-    canVisitNeighbor: (neighbor: XYZ, from?: XYZ, past?: XYZ[]) => boolean;
+    canVisitNeighbor: (neighbor: XYZ, from?: XYZ, history?: IPathHistoryItem[]) => boolean;
     /** 
+     * Warning: setting this to anything but 0 can greatly slow down the algorithm!
+     * `fudgeFactor` is only needed if the key returned by `getStateKey` doesn't represent a unique state!
      * A positive number that allows a path to visit a spot it's been before, or to visit a spot that another path has been to but more
      * efficiently, within a certain allowable range. This is needed when one path reaching a spot quicker doesn't necessarily imply that
      * it will reach the target point faster. (for example if there are restrictions on allowable movement based on past movement).
@@ -55,10 +60,20 @@ export interface IPathfindingOptions {
     fudgeFactor?: number;
     /**
      * Performs some action on every point before it's visited. Is called using the point to be visited and the path the traveler has taken.
-     * The last item in the `past` array is the same as the `from` point.
+     * The point in the last item in the `history` array is the same as the `from` point.
      * @default () => {}
      */
-    tap?: (p: XYZ, past?: XYZ[]) => void;
+    tap?: (p: XYZ, history?: IPathHistoryItem[]) => void;
+    /**
+     * A function which returns a key to use, which is used to determine whether a path has traveled to the same "spot" as another.
+     * For every unique key, The fastest path from that state should always be the same.
+     * For simple pathfinding algorithms, use `p => p.toString()`.
+     * For something more complicated, like if there are restrictions on where the traveler can go from the given point based on other
+     * criteria, return a string that describes the point and the directions or places that the traveler can go from there. Always use the
+     * least possible amount of info to describe the state.
+     * @default p => p.toString()
+     */
+    getStateKey?: (p: XYZ, history?: IPathHistoryItem[]) => string;
     /**
      * Gets the "weight" i.e. cost, to travel to a point. Higher weights are considered to be "worse".
      * Default: p => 1
@@ -81,19 +96,35 @@ export interface IFloodFillResult {
 
 export interface IPathfindingResult {
     /** the list of points BFS took to get to the end point. Does not include starting point. */
-    path: XYZ[];
+    history: IPathHistoryItem[];
     /** the sum of weights on the shortest path */
     totalWeight: number;
 }
 
+export interface IPathHistoryItem {
+    point: XYZ;
+    stateKey?: string;
+    accumulatedWeight?: number;
+}
+
 interface IBfsQueueItem {
     point: XYZ;
-    past: XYZ[];
     accumulatedWeight: number;
+    /** a key for each step on its path */
+    history: IPathHistoryItem[];
 }
 
 /** A class that gives convenient tools for dealing with 2D or 3D coordinates */
 export class XYZ {
+
+    static orthogonalDirections2D = [ [1,0], [0,1], [-1,0], [0,-1] ];
+    static diagonalDirections2D = [ [1,1], [1,-1], [-1,-1], [-1,1] ];
+    static orthogonalDirections3D = [ [1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1] ];
+    static diagonalDirections3D = [
+        [1,1,1],  [1,-1,1],  [-1,-1,1],  [-1,1,1],
+        [1,1,0],  [1,-1,0],  [-1,-1,0],  [-1,1,0],
+        [1,1,-1], [1,-1,-1], [-1,-1,-1], [-1,1,-1]
+    ];
 
     /** Takes either an XYZ or number[] and converts it to XYZ */
     static normalize( c: Coordinate ): XYZ {
@@ -263,7 +294,7 @@ export class XYZ {
      * Returns the path to the target point and the total weight to get there.
      * Avoids revisiting points that have previously been visited with equal or lower total weights on the path to that given point.
      */
-    quickestPath( options: IPathfindingOptions ): IPathfindingResult {
+    quickestPath( options: IPathfindingOptions, showDebug = false ): IPathfindingResult {
         const defaultOptions: IPathfindingOptions = {
             target: null,
             getNeighbors: p => p.neighbors(),
@@ -271,16 +302,17 @@ export class XYZ {
             fudgeFactor: 0,
             tap: () => {},
             getPointWeight: p => 1,
-            averageWeight: 1
+            averageWeight: 1,
+            getStateKey: p => p.toString()
         };
         const o = Object.assign( {}, defaultOptions, options );
         /** a map of string representations of points that have been visited and the lowest total weight any path has accumulated to get there */
         const lowestWeightsToPoint = new Map<string,number>();
-        const queue: IBfsQueueItem[] = [{ point: this, past: [], accumulatedWeight: 0 }];
+        const queue: IBfsQueueItem[] = [{ point: this, history: [], accumulatedWeight: 0 }];
         lowestWeightsToPoint.set( this.toString(), 0 );
         let current: IBfsQueueItem;
         // the lowest weight that any path has accumulated on a complete path to the target point
-        let fastestFinish: IBfsQueueItem = { point: null, past: [], accumulatedWeight: Number.MAX_VALUE };
+        let fastestFinish: IBfsQueueItem = { point: null, history: [], accumulatedWeight: Number.MAX_VALUE };
         let i = 0;
         while ( !(queue.length === 0 || queue[i] == null) ) {
             // normally a BFS would shift from the front of a queue and push new items to the queue.
@@ -292,7 +324,9 @@ export class XYZ {
                 queue.splice( 0, 10000 );
                 i -= 10000;
 
-                console.log( 'fastest finish:', fastestFinish.accumulatedWeight, 'current path length:', current.past.length, 'queue size', queue.length );
+                if ( showDebug ) {
+                    console.log( 'path length:', current.history.length, 'queue size', queue.length );
+                }
             }
             i++;
 
@@ -314,18 +348,12 @@ export class XYZ {
                 }
             }
 
-            // check the past few points to see if another path has gotten to that point faster than this path
-            let pastWeights = 0;
+            // check the history of this path to see if another path has gotten to any of its former states faster
             let shouldContinue = false;
-            for ( let j = 0; j < 4; j++ ) {
-                if ( current.past.length > j ) {
-                    const point = current.past[current.past.length - 1 - j];
-                    const fastestToPoint = lowestWeightsToPoint.get( point.toString() );
-                    pastWeights += j > 0 ? o.getPointWeight( current.past[current.past.length - j], point ) : 0;
-                    if ( fastestToPoint != null && fastestToPoint + o.fudgeFactor < current.accumulatedWeight - pastWeights ) {
-                        shouldContinue = true;
-                        break;
-                    }
+            for ( let j = 0; j < current.history.length; j++ ) {
+                if ( lowestWeightsToPoint.get(current.history[j].stateKey) + o.fudgeFactor < current.history[j].accumulatedWeight ) {
+                    shouldContinue = true;
+                    break;
                 }
             }
             if ( shouldContinue ) {
@@ -333,12 +361,21 @@ export class XYZ {
             }
 
             // get the neighbors of the current point, and map to either null (if we're not going to travel there), or the item to add to the queue
-            o.getNeighbors( current.point ).forEach( n => {
-                if ( !o.canVisitNeighbor(n, current.point, current.past) ) {
+            o.getNeighbors( current.point, current.history ).forEach( n => {
+                if ( !o.canVisitNeighbor(n, current.point, current.history) ) {
                     return;
                 }
-                const lowestWeightToNeighbor = lowestWeightsToPoint.get( n.toString() ) ?? Number.MAX_VALUE;
                 const totalWeightToTravel = current.accumulatedWeight + o.getPointWeight( n, current.point );
+                const newHistoryItem: IPathHistoryItem = {
+                    accumulatedWeight: totalWeightToTravel,
+                    point: n,
+                    stateKey: '' // will be changed later
+                };
+                const pastPlusN = current.history.slice().concat( newHistoryItem );
+                const stateKey = o.getStateKey( n, pastPlusN );
+                newHistoryItem.stateKey = stateKey;
+                
+                const lowestWeightToNeighbor = lowestWeightsToPoint.get( stateKey ) ?? Number.MAX_VALUE;
                 // don't travel if this point has already been visited and we're not allowed to revisit
                 if (
                     lowestWeightToNeighbor != null &&
@@ -349,14 +386,14 @@ export class XYZ {
 
                 // we will travel to this point
                 // add this point to the 'visited points' map, and to the history of the current path
-                o.tap( n, current.past );
-                lowestWeightsToPoint.set( n.toString(), Math.min(lowestWeightToNeighbor, totalWeightToTravel) );
+                o.tap( n, current.history );
+                lowestWeightsToPoint.set( stateKey, Math.min(lowestWeightToNeighbor, totalWeightToTravel) );
                 // add this point to the back of the queue
-                queue.push({ point: n, past: current.past.slice().concat(n), accumulatedWeight: totalWeightToTravel });
+                queue.push({ point: n, history: pastPlusN, accumulatedWeight: totalWeightToTravel });
             });
         }
         return {
-            path: fastestFinish.past,
+            history: fastestFinish.history,
             totalWeight: fastestFinish.accumulatedWeight
         };
     }
