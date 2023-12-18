@@ -57,7 +57,8 @@ function solve( lines: IParsed[] ) {
     // for each pair, each item in the pair gives an extra 1/2 unit of area, which is the same as straight edges, so all straight edges
     // and all corners (except for 4 ourside corners) give us an area of (length / 2).
     // The 4 extra outside corners give us (3/4)*4 extra area, or simplified, just 3.
-    return areaOfPolygon( poly ) + ( perimeter - 4 ) / 2 + 3;
+    // Simplifying `( perimeter - 4 ) / 2 + 3` gives us `perimeter/2 - 4/2 + 3`, or `perimeter/2 + 1`
+    return areaOfPolygon( poly ) + perimeter / 2 + 1;
 }
 
 outputAnswers(
