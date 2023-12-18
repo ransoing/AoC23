@@ -22,14 +22,14 @@ function findLoop( input: string ) {
     const start = new XYZ([ grid[rowWithS].indexOf('S'), rowWithS ]);
 
     // this finds how long it is around the whole loop
-    return start.bfs({
+    return start.floodFill({
         canVisitNeighbor: ( neighbor, p ) => {
             const [ pTile, nTile ] = [ p, neighbor ].map( point => point.valueIn(grid) );
             // return if the current point can travel in the direction of the neighbor point and vice versa
             return diffMap.get( neighbor.minus(p).toString() ).includes( pTile ) &&
                 diffMap.get( p.minus(neighbor).toString() ).includes( nTile );
         }
-    });
+    }).visitedPoints;
 }
 
 /** finds the number of points inside the loop by determining how many times a vector starting at a point crosses the walls of the loop */
@@ -38,7 +38,7 @@ function findEnclosed( input ) {
 
     // coordinates represented as strings
     const isLoopTile = new Map<string,boolean>();
-    findLoop( input ).visitedPoints.forEach( p => isLoopTile.set(p.toString(), true) );
+    findLoop( input ).forEach( p => isLoopTile.set(p.toString(), true) );
 
     return sum(
         grid.map( (row,y) => {
@@ -60,7 +60,7 @@ function findEnclosed( input ) {
 
 outputAnswers(
     // function that solves part 1
-    ( input: string ) => findLoop( input ).pathLength,
+    ( input: string ) => findLoop( input ).length / 2,
     // function that solves part 2
     ( input: string ) => findEnclosed( input ),
 

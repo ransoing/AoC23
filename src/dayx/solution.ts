@@ -1,8 +1,10 @@
 import { sum } from 'lodash';
+import { isPointInPolygon } from 'geolib';
 import { outputAnswers } from '../output-answers';
 import { parseIntegers, product, readTextFile } from '../util/misc';
 import { XYZ } from '../util/xyz';
 import { parseAsYxGrid } from '../util/grid';
+const areaOfPolygon = require( 'area-polygon' );
 
 function solve( input: string ) {
     // const blocks = input.split( '\n\n' ).map( block => block.split('\n') );

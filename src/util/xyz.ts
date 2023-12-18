@@ -2,53 +2,94 @@ import { sum } from 'lodash';
 
 export type Coordinate = XYZ | number[];
 
-interface IBfsOptions {
+export interface IFloodFillOptions {
     /**
      * A function to get the neighbors of this point.
      * @default p => p.neighbors()
      */
     getNeighbors?: (p: XYZ) => XYZ[];
     /**
-     * Determines whether a neighbor point can be visited, in addition to normal checks of whether the point has already been visited,
-     * determined by if the neighbor's key as defined by getVisitedKey is already in the list of visited point keys.
+     * Determines whether a neighbor point can be visited, determined by if the neighbor's key as defined by getVisitedKey is already in the
+     * list of visited point keys. This is in addition to normal checks of whether the point has already been visited by another traveler,
+     * by a path that has less weight
+     * 
      * @default () => true
      */
     canVisitNeighbor?: (neighbor: XYZ, p: XYZ) => boolean;
     /**
-     * Determines whether the BFS should stop when visiting a new point.
-     * @default () => false
-     */
-    shouldStop?: (p: XYZ) => boolean;
-    /**
-     * Performs some action on every point before it's visited.
+     * Performs some action on every point before it's visited. Is called using the point to be visited, the iteration after visiting the
+     * point, and the path the traveler has taken
      * @default () => {}
      */
-    tap?: (p: XYZ, iteration: number) => void;
-    /** 
-     * Returns the string to add to the 'visitedPoints' set when a point is visited. This is used to determine whether a neighbor can be
-     * visited, in addition to the return value of the `canVisitNeighbor` function.
-     * @default p => p.toString()
-     */
-    getVisitedKey?: (p: XYZ, iteration: number) => string;
+    tap?: (p: XYZ) => void;
 }
 
-export interface IBfsResult {
+export interface IPathfindingOptions {
     /**
-     * all the point keys that the BFS visited, on all paths taken, represented by keys from the `getVisitedKey` function.
-     * Includes start and end points.
+     * The point we're trying to get to
      */
-    visitedKeys: Set<string>;
-    /** an array of all the unique points visited by all paths taken, including the starting and ending points */
+    target: XYZ;
+    /**
+     * A function to get the neighbors of this point - those that can be traveled to as well as those that can't.
+     * Typically you would call `p.neighbors()` or `p.neighbors3D()`
+     * @default p => p.neighbors() (gets orthogonal 2D neighbors)
+     */
+    getNeighbors?: (p: XYZ) => XYZ[];
+    /**
+     * Determines whether a neighbor point can be visited. If left to the default, the BFS search will search an infinitely large grid.
+     * This is called in addition to `canRevisitPoint` to determine if the BFS search can move to a point.
+     * The last item in the `past` array is the same as the `from` point.
+     * 
+     * @default () => true
+     */
+    canVisitNeighbor: (neighbor: XYZ, from?: XYZ, past?: XYZ[]) => boolean;
+    /** 
+     * A positive number that allows a path to visit a spot it's been before, or to visit a spot that another path has been to but more
+     * efficiently, within a certain allowable range. This is needed when one path reaching a spot quicker doesn't necessarily imply that
+     * it will reach the target point faster. (for example if there are restrictions on allowable movement based on past movement).
+     * Higher numbers allow more overlap between different paths but will greatly slow down the algorithm. Set the number based on the
+     * weight of points. If the average weight is 10 and you set this number to 100, the algorithm will be very slow and allow much overlap.
+     * If the average weight is 10 and you set it to 10, it will only allow a small amount of overlap in paths.
+     * @default 0
+     */
+    fudgeFactor?: number;
+    /**
+     * Performs some action on every point before it's visited. Is called using the point to be visited and the path the traveler has taken.
+     * The last item in the `past` array is the same as the `from` point.
+     * @default () => {}
+     */
+    tap?: (p: XYZ, past?: XYZ[]) => void;
+    /**
+     * Gets the "weight" i.e. cost, to travel to a point. Higher weights are considered to be "worse".
+     * Default: p => 1
+     */
+    getPointWeight?: (to: XYZ, from?: XYZ) => number;
+    /**
+     * An estimated average weight it takes to travel from any one point to another. Used to help stop paths early when one path has gotten
+     * to the finish point. Conservative lower numbers will produce a more accurate end result but run slower.
+     * Another way to think about this is: given a path that has gotten halfway, what's the lowest possible additional weight it could
+     * accumulate on the way to the finish?
+     * Default: 1
+     */
+    averageWeight?: number;
+}
+
+export interface IFloodFillResult {
+    /** an array of all the unique points visited by all paths taken, including the starting and ending points, in the order they were visited */
     visitedPoints: XYZ[];
-    /** the last XYZ point visited before the BFS stopped */
-    endPoint: XYZ;
-    /** the length of the path the BFS took to get to `endPoint` */
-    pathLength: number;
+}
+
+export interface IPathfindingResult {
+    /** the list of points BFS took to get to the end point. Does not include starting point. */
+    path: XYZ[];
+    /** the sum of weights on the shortest path */
+    totalWeight: number;
 }
 
 interface IBfsQueueItem {
     point: XYZ;
-    iteration: number;
+    past: XYZ[];
+    accumulatedWeight: number;
 }
 
 /** A class that gives convenient tools for dealing with 2D or 3D coordinates */
@@ -186,45 +227,143 @@ export class XYZ {
     }
 
     /**
-     * Performs a breadth-first search starting at the point the method is called on.
-     * Returns the set of visited points and the number if iterations it took to finish.
-     * Unless otherwise specified, stops when it runs out of possible places to travel and avoids revisiting points that any path
-     * has visited.
-     */
-    bfs( options: IBfsOptions ): IBfsResult {
-        const defaultOptions: IBfsOptions = {
+     * Performs a "flood fill" using breadth-first search starting at the point the method is called on.
+     * Flood fill is used to find all points accessible from the starting point.
+    */
+    floodFill( options: IFloodFillOptions ): IFloodFillResult {
+        const defaultOptions: IFloodFillOptions = {
             getNeighbors: p => p.neighbors(),
             canVisitNeighbor: () => true,
-            getVisitedKey: p => p.toString(),
-            shouldStop: () => false,
             tap: () => {}
         };
         const o = Object.assign( {}, defaultOptions, options );
-        const visitedKeys = new Set<string>(); // XYZ strings, also maybe combined with iteration strings?
-        const visitedPoints = new Set<string>(); // used just for returning info, not used during the BFS algorithm
-        const queue: IBfsQueueItem[] = [{ point: this, iteration: 0 }];
-        visitedKeys.add( o.getVisitedKey(this, 0) );
+        // record which points we've visited so we don't visit any twice
+        const visitedPoints = new Set<string>();
         visitedPoints.add( this.toString() );
-        let current: IBfsQueueItem;
+        const queue: XYZ[] = [ this ];
+        let current: XYZ;
         while ( queue.length > 0 ) {
             current = queue.pop();
-            if ( o.shouldStop(current.point) ) {
-                break;
-            }
-            o.getNeighbors( current.point ).filter(
-                n => o.canVisitNeighbor( n, current.point ) && !visitedKeys.has( o.getVisitedKey(n, current.iteration + 1) )
-            ).forEach( p => {
-                o.tap( p, current.iteration + 1 );
-                visitedKeys.add( o.getVisitedKey(p, current.iteration + 1) );
-                visitedPoints.add( p.toString() );
-                queue.unshift({ point: p, iteration: current.iteration + 1 });
+            o.getNeighbors( current ).filter(
+                n => o.canVisitNeighbor( n, current ) && !visitedPoints.has( n.toString() )
+            ).forEach( n => {
+                o.tap( n );
+                visitedPoints.add( n.toString() );
+                queue.unshift( n );
             });
         }
         return {
-            visitedKeys: visitedKeys,
-            visitedPoints: [ ...visitedPoints.values() ].map( XYZ.fromString ),
-            endPoint: current.point,
-            pathLength: current.iteration
+            visitedPoints: Array.from( visitedPoints.values() ).map( XYZ.fromString )
         };
     }
+
+    /**
+     * Uses a breadh-first search to find the quickest path from the point the method is called to a target point.
+     * If point weights are not set, this returns the shortest path.
+     * Returns the path to the target point and the total weight to get there.
+     * Avoids revisiting points that have previously been visited with equal or lower total weights on the path to that given point.
+     */
+    quickestPath( options: IPathfindingOptions ): IPathfindingResult {
+        const defaultOptions: IPathfindingOptions = {
+            target: null,
+            getNeighbors: p => p.neighbors(),
+            canVisitNeighbor: () => true,
+            fudgeFactor: 0,
+            tap: () => {},
+            getPointWeight: p => 1,
+            averageWeight: 1
+        };
+        const o = Object.assign( {}, defaultOptions, options );
+        /** a map of string representations of points that have been visited and the lowest total weight any path has accumulated to get there */
+        const lowestWeightsToPoint = new Map<string,number>();
+        const queue: IBfsQueueItem[] = [{ point: this, past: [], accumulatedWeight: 0 }];
+        lowestWeightsToPoint.set( this.toString(), 0 );
+        let current: IBfsQueueItem;
+        // the lowest weight that any path has accumulated on a complete path to the target point
+        let fastestFinish: IBfsQueueItem = { point: null, past: [], accumulatedWeight: Number.MAX_VALUE };
+        let i = 0;
+        while ( !(queue.length === 0 || queue[i] == null) ) {
+            // normally a BFS would shift from the front of a queue and push new items to the queue.
+            // The algorithm processes faster if we don't shift with each iteration, so instead we just keep track of the index of the item
+            // in the queue we're processing.
+            // But keep the queue small... every so often, trim it down.
+            current = queue[i];
+            if ( i === 10000 ) {
+                queue.splice( 0, 10000 );
+                i -= 10000;
+
+                console.log( 'fastest finish:', fastestFinish.accumulatedWeight, 'current path length:', current.past.length, 'queue size', queue.length );
+            }
+            i++;
+
+
+            if ( current.point.eq(o.target) ) {
+                // we've arrived at the target destination - don't travel any further and record what it took to get here, so we can stop
+                // other paths early
+                if ( current.accumulatedWeight < fastestFinish.accumulatedWeight ) {
+                    fastestFinish = current;
+                }
+                continue;
+            }
+
+            // check if this unfinished path can't finish faster than the fastest finish - abort early if so
+            if ( fastestFinish.accumulatedWeight !== Number.MAX_VALUE ) {
+                const distanceToEnd = current.point.taxicabDistanceTo( o.target );
+                if ( current.accumulatedWeight + o.averageWeight * distanceToEnd >= fastestFinish.accumulatedWeight ) {
+                    continue;
+                }
+            }
+
+            // check the past few points to see if another path has gotten to that point faster than this path
+            let pastWeights = 0;
+            let shouldContinue = false;
+            for ( let j = 0; j < 4; j++ ) {
+                if ( current.past.length > j ) {
+                    const point = current.past[current.past.length - 1 - j];
+                    const fastestToPoint = lowestWeightsToPoint.get( point.toString() );
+                    pastWeights += j > 0 ? o.getPointWeight( current.past[current.past.length - j], point ) : 0;
+                    if ( fastestToPoint != null && fastestToPoint + o.fudgeFactor < current.accumulatedWeight - pastWeights ) {
+                        shouldContinue = true;
+                        break;
+                    }
+                }
+            }
+            if ( shouldContinue ) {
+                continue;
+            }
+
+            // get the neighbors of the current point, and map to either null (if we're not going to travel there), or the item to add to the queue
+            o.getNeighbors( current.point ).forEach( n => {
+                if ( !o.canVisitNeighbor(n, current.point, current.past) ) {
+                    return;
+                }
+                const lowestWeightToNeighbor = lowestWeightsToPoint.get( n.toString() ) ?? Number.MAX_VALUE;
+                const totalWeightToTravel = current.accumulatedWeight + o.getPointWeight( n, current.point );
+                // don't travel if this point has already been visited and we're not allowed to revisit
+                if (
+                    lowestWeightToNeighbor != null &&
+                    totalWeightToTravel >= lowestWeightToNeighbor + o.fudgeFactor
+                ) {
+                    return;
+                }
+
+                // we will travel to this point
+                // add this point to the 'visited points' map, and to the history of the current path
+                o.tap( n, current.past );
+                lowestWeightsToPoint.set( n.toString(), Math.min(lowestWeightToNeighbor, totalWeightToTravel) );
+                // add this point to the back of the queue
+                queue.push({ point: n, past: current.past.slice().concat(n), accumulatedWeight: totalWeightToTravel });
+            });
+        }
+        return {
+            path: fastestFinish.past,
+            totalWeight: fastestFinish.accumulatedWeight
+        };
+    }
+
+    /** an alias for `quickestPath` */
+    shortestPath( options: IPathfindingOptions ) {
+        return this.quickestPath( options );
+    }
 }
+

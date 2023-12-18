@@ -19,7 +19,9 @@
   },
   "homepage": "https://github.com/ransoing/AoC22#readme",
   "dependencies": {
+    "area-polygon": "^1.0.1",
     "esm": "^3.2.25",
+    "geolib": "^3.3.4",
     "lodash": "^4.17.21",
     "multilateration": "^0.6.2",
     "nerdamer": "^1.1.13",
