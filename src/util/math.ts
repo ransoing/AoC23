@@ -25,9 +25,9 @@ export function factorsOf( num: number ): number[] {
  * given multiple concurrent repeating patterns each with a given number of steps and starting at step 0, finds the least number of
  * steps > 0 where all patterns once again simultaneously reach step 0.
  * In other words, finds the lowest number > 0 that is evenly divisible by all the given numbers.
- * @example `jointFrequency( 4, 5, 10 )` = 20
+ * @example `conjunctionFrequency( 4, 5, 10 )` = 20
  */
-export function jointFrequency( ...patternLengths: number[] ): number {
+export function conjunctionFrequency( ...patternLengths: number[] ): number {
     return patternLengths.reduce( (total, steps) => {
         const largestFactor = Math.max( ...intersection( ...[total, steps].map(n => factorsOf(n)) ) );
         return ( total * steps ) / largestFactor;
