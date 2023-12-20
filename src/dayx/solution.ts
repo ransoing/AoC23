@@ -1,9 +1,12 @@
 import { sum } from 'lodash';
 import { isPointInPolygon } from 'geolib';
 import { outputAnswers } from '../output-answers';
-import { parseIntegers, product, readTextFile } from '../util/misc';
-import { XYZ } from '../util/xyz';
 import { parseAsYxGrid } from '../util/grid';
+import { product } from '../util/math';
+import { countDiffs } from '../util/misc';
+import { readTextFile } from '../util/parse';
+import { Range } from '../util/range';
+import { XYZ } from '../util/xyz';
 const areaOfPolygon = require( 'area-polygon' );
 
 function solve( input: string ) {

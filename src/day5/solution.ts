@@ -1,7 +1,7 @@
 import { chunk } from 'lodash';
 import { outputAnswers } from '../output-answers';
 import { officialInput, testInput } from './inputs';
-import { parseIntegers } from '../util/misc';
+import { parseIntegers } from '../util/parse';
 
 /**
  * My solution to day 2 uses "range arithmetic". Rather than brute-forcing a solution, I compare the source and destination ranges to

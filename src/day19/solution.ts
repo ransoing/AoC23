@@ -1,6 +1,7 @@
 import { clone, sum } from 'lodash';
 import { outputAnswers } from '../output-answers';
-import { product, readTextFile } from '../util/misc';
+import { product } from '../util/math';
+import { readTextFile } from '../util/parse';
 
 /** these types describe objects with 'x', 'm', 'a', and 's' properties */
 type Part = { [key: string]: number };
@@ -104,7 +105,7 @@ function parseWorkflows( lines: string[] ) {
 /** calculates the number of possible combinations for all given ranges of x, m, a, and s */
 function combos( r: Ranges ) {
     return product(
-        Object.values(r).map( range => range[1] - range[0] )
+        ...Object.values(r).map( range => range[1] - range[0] )
     );
 }
 

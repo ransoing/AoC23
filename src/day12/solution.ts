@@ -1,7 +1,7 @@
 import { memoize, sum } from 'lodash';
 import { outputAnswers } from '../output-answers';
 import { fullInput, exampleInput } from './inputs';
-import { parseIntegers } from '../util/misc';
+import { parseIntegers } from '../util/parse';
 
 function solve( input: string, repeatFactor: number ) {
     return sum(

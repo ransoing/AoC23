@@ -1,7 +1,7 @@
 import { outputAnswers } from '../output-answers';
 import { Coordinate, XYZ } from '../util/xyz';
 import { parseAsYxGrid } from '../util/grid';
-import { readTextFile } from '../util/misc';
+import { readTextFile } from '../util/parse';
 
 interface IBeam {
     location: XYZ;

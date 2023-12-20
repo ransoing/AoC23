@@ -1,7 +1,7 @@
 import { add, first, last, subtract, sum, uniq } from 'lodash';
 import { outputAnswers } from '../output-answers';
 import { fullInput, exampleInput } from './inputs';
-import { parseIntegers } from '../util/misc';
+import { parseIntegers } from '../util/parse';
 
 function solve( input: string, getExtremity: (ns: number[]) => number, operator: (n1: number, n2: number) => number ) {
     /** returns the next or previous number in a sequence beyond the given numbers */

@@ -1,7 +1,8 @@
 import { range } from 'lodash';
 import { outputAnswers } from '../output-answers';
 import { fullInput, exampleInput } from './inputs';
-import { parseIntegers, product } from '../util/misc';
+import { product } from '../util/math';
+import { parseIntegers } from '../util/parse';
 
 /**
  * 
@@ -19,7 +20,7 @@ function solve( values: number[][] ) {
     // values[0][n] represents the duration of a race, and value[1][n] represents the distance. n represents a race
     return product(
         // for each race, count the total number of ways to win. Don't bother with calculating the cases for 0 and t since the total distance would be 0.
-        values[0].map( (_, i) => {
+        ...values[0].map( (_, i) => {
             return range( 1, values[0][i] ).filter(
                 msHeld => msHeld * ( values[0][i] - msHeld ) > values[1][i]
             ).length

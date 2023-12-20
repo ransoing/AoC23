@@ -1,6 +1,6 @@
 import { range } from 'lodash';
 import { outputAnswers } from '../output-answers';
-import { readTextFile } from '../util/misc';
+import { readTextFile } from '../util/parse';
 import { XYZ } from '../util/xyz';
 import { parseAsYxGrid } from '../util/grid';
 

@@ -1,7 +1,7 @@
 import { intersection } from 'lodash';
 import { outputAnswers } from '../output-answers';
 import { fullInput, exampleInput, exampleInput2 } from './inputs';
-import { factorsOf } from '../util/misc';
+import { factorsOf } from '../util/math';
 
 /**
  * This solution makes an oversight, but happens to give the correct answer.

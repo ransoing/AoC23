@@ -117,6 +117,12 @@ interface IBfsQueueItem {
 /** A class that gives convenient tools for dealing with 2D or 3D coordinates */
 export class XYZ {
 
+    static xPositive = [ 1, 0, 0 ];
+    static xNegative = [ -1, 0, 0 ];
+    static yPositive = [ 0, 1, 0 ];
+    static yNegative = [ 0, -1, 0 ];
+    static zPositive = [ 0, 0, 1 ];
+    static zNegative = [ 0, 0, -1 ];
     static orthogonalDirections2D = [ [1,0], [0,1], [-1,0], [0,-1] ];
     static diagonalDirections2D = [ [1,1], [1,-1], [-1,-1], [-1,1] ];
     static orthogonalDirections3D = [ [1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1] ];
@@ -125,6 +131,10 @@ export class XYZ {
         [1,1,0],  [1,-1,0],  [-1,-1,0],  [-1,1,0],
         [1,1,-1], [1,-1,-1], [-1,-1,-1], [-1,1,-1]
     ];
+    /** directions organized in clockwise direction for a grid where positive y is down */
+    static clockwiseDirectionsYDown = [ [0,-1], [1,0], [0,1], [-1,0] ];
+    /** directions organized in clockwise direction for a grid where positive y is up */
+    static clockwiseDirectionsYUp = [ [0,1], [1,0], [0,-1], [-1,0] ];
 
     /** Takes either an XYZ or number[] and converts it to XYZ */
     static normalize( c: Coordinate ): XYZ {
@@ -180,7 +190,7 @@ export class XYZ {
         return this.copy().subtract( ...cs );
     }
 
-    /** Multiplies all values by a given scalar. Modifies the original object */
+    /** Multiplies all values by a given scalar. Modifies the original object and returns it */
     multiply( scalar: number ): XYZ {
         [ 'x', 'y', 'z' ].forEach( prop => this[prop] *= scalar );
         return this;
@@ -189,6 +199,16 @@ export class XYZ {
     /** Multiplies all values by a given scalar, returning a new object */
     times( scalar: number ): XYZ {
         return this.copy().multiply( scalar );
+    }
+
+    /** Divides all values by a given divisor. Modifies the original object and returns it */
+    divide( divisor: number ): XYZ {
+        return this.multiply( 1 / divisor );
+    }
+
+    /** Divides all values by a given divisor, returning a new object */
+    dividedBy( divisor: number ): XYZ {
+        return this.times( 1 / divisor );
     }
 
     /** Returns a copy of the object */
@@ -216,20 +236,12 @@ export class XYZ {
 
     /** Returns all neighbors in the same z plane */
     neighbors( includeDiagonal = false ): XYZ[] {
-        const orthogonal = [ [1,0], [0,1], [-1,0], [0,-1] ];
-        const diagonal = [ [1,1], [1,-1], [-1,-1], [-1,1] ];
-        return orthogonal.concat( includeDiagonal ? diagonal : [] ).map( c => this.plus(c) );
+        return XYZ.orthogonalDirections2D.concat( includeDiagonal ? XYZ.diagonalDirections2D : [] ).map( c => this.plus(c) );
     }
 
     /** Returns all neighbors in 3 dimensions */
     neighbors3D( includeDiagonal = false ): XYZ[] {
-        const orthogonal = [ [1,0,0], [-1,0,0], [0,1,0], [0,-1,0], [0,0,1], [0,0,-1] ];
-        const diagonal = [
-            [1,1,1],  [1,-1,1],  [-1,-1,1],  [-1,1,1],
-            [1,1,0],  [1,-1,0],  [-1,-1,0],  [-1,1,0],
-            [1,1,-1], [1,-1,-1], [-1,-1,-1], [-1,1,-1]
-        ];
-        return orthogonal.concat( includeDiagonal ? diagonal : [] ).map( c => this.plus(c) );
+        return XYZ.orthogonalDirections3D.concat( includeDiagonal ? XYZ.diagonalDirections3D : [] ).map( c => this.plus(c) );
     }
 
     /** Returns the absolute straight-line distance from one point to another */
