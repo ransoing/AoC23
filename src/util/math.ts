@@ -22,17 +22,20 @@ export function factorsOf( num: number ): number[] {
 }
 
 /**
- * given multiple concurrent repeating patterns each with a given number of steps and starting at step 0, finds the least number of
- * steps > 0 where all patterns once again simultaneously reach step 0.
- * In other words, finds the lowest number > 0 that is evenly divisible by all the given numbers.
- * @example `conjunctionFrequency( 4, 5, 10 )` = 20
+ * Finds the least common multiple of the given numbers.
+ * In other words, given multiple concurrent repeating cycles each with a given number of steps and starting at step 0, finds the least
+ * number of steps > 0 where all cycles once again simultaneously reach step 0.
+ * @example `leastCommonMultiple( 4, 5, 10 )` = 20
  */
-export function conjunctionFrequency( ...patternLengths: number[] ): number {
+export function leastCommonMultiple( ...patternLengths: number[] ): number {
     return patternLengths.reduce( (total, steps) => {
         const largestFactor = Math.max( ...intersection( ...[total, steps].map(n => factorsOf(n)) ) );
         return ( total * steps ) / largestFactor;
     }, 1 );
 }
+
+/** alias of `leastCommonMultiple` */
+export const conjunctionFrequency = leastCommonMultiple;
 
 /**
  * Given multiple die sizes, returns info on probabilities of rolling different totals.
