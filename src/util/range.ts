@@ -6,6 +6,9 @@ export class Range {
      * Keep in mind that a Range represents all values where start <= value < end.
      */
     static intersection( ...ranges: Range[] ) {
+        if ( ranges.length === 0 ) {
+            return Range.makeInvalidRange();
+        }
         return ranges[0].intersection( ...ranges.slice(1) );
     }
 
@@ -14,6 +17,9 @@ export class Range {
      * Simplifies intersecting ranges into a smaller number of ranges.
      */
     static union( ...ranges: Range[] ) {
+        if ( ranges.length === 0 ) {
+            return [];
+        }
         return ranges[0].union( ...ranges.slice(1) );
     }
 
@@ -21,6 +27,10 @@ export class Range {
     static fromString( str: string ) {
         const nums = str.split( ',' ).map( v => parseInt(v) );
         return new Range( nums[0], nums[1] );
+    }
+
+    static makeInvalidRange() {
+        return new Range( NaN, NaN );
     }
 
     /** creates a new range of values, encompassing `start` <= values < `end` */
@@ -106,10 +116,12 @@ export class Range {
      * If the given number is outside the range, one of the two returned ranges will be ( NaN, NaN )
      */
     splitAt( num: number ) {
-        if ( num < this.start ) {
-            return [ new Range(NaN, NaN), this.copy() ];
+        if ( this.isInvalid() ) {
+            return [ Range.makeInvalidRange(), Range.makeInvalidRange() ]
+        } else if ( num < this.start ) {
+            return [ Range.makeInvalidRange(), this.copy() ];
         } else if ( num >= this.end ) {
-            return [ this.copy(), new Range(NaN, NaN) ];
+            return [ this.copy(), Range.makeInvalidRange() ];
         } else {
             return [ new Range(this.start, num), new Range(num, this.end) ];
         }
@@ -139,10 +151,17 @@ export class Range {
      * `new Range( 0, 4 ).intersection( new Range(4, 6) ).toString()` -> `NaN,NaN` // a range of `new Range(4,4)` doesn't encompass any values
      */
     intersection( ...ranges: Range[] ) {
+        if ( ranges.length === 0 ) {
+            return this.copy();
+        }
         const reduced = ranges.reduce( (r1, r2) => {
-            return new Range( Math.max(r1.start, r2.start), Math.min(r1.end, r2.end) );
+            if ( r1.intersectsWith(r2) ) {
+                return new Range( Math.max(r1.start, r2.start), Math.min(r1.end, r2.end) );
+            } else {
+                return Range.makeInvalidRange();
+            }
         }, this );
-        return reduced.start >= reduced.end ? new Range( NaN, NaN ) : reduced;
+        return reduced.start >= reduced.end ? Range.makeInvalidRange() : reduced;
     }
 
     /** returns an array of Ranges representing values from this range that aren't contained in the given ranges */
@@ -180,13 +199,16 @@ export class Range {
      * Simplifies intersecting ranges into a smaller number of ranges.
      */
     union( ...ranges: Range[] ) {
+        if ( ranges.length === 0 ) {
+            return [ this.copy() ];
+        }
+        ranges = ranges.map( r => r.copy() );
         // sort all by range.start
         ranges = ranges.slice().concat( this.copy() ).sort( (a,b) => a.start - b.start );
         let mergedRanges: Range[] = ranges.splice( 0, 1 );
         ranges.forEach( newRange => {
             const lastRange = mergedRanges[mergedRanges.length - 1];
-            if ( newRange.intersectsWith(lastRange) || lastRange.end === newRange.start ) {
-                lastRange.start = Math.min( lastRange.start, newRange.start );
+            if ( newRange.start <= lastRange.end ) {
                 lastRange.end = Math.max( lastRange.end, newRange.end );
             } else {
                 mergedRanges.push( newRange );

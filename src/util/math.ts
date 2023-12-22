@@ -37,11 +37,21 @@ export function leastCommonMultiple( ...patternLengths: number[] ): number {
 /** alias of `leastCommonMultiple` */
 export const conjunctionFrequency = leastCommonMultiple;
 
+
+interface IRollProbability {
+    /** the sum of all die rolls for this unique combination of rolled values */
+    rollTotal: number;
+    /** the probability (0 < p <= 1 ) that this roll total will occur out of all possible roll totals */
+    probability: number;
+    /** the number of different possible die roll combinations that results in this total */
+    occurenceCount: number;
+}
+
 /**
  * Given multiple die sizes, returns info on probabilities of rolling different totals.
  * @example `rollProbabilities( 6, 6 )` to get probabilities when rolling two D6's.
  */
-export function rollProbabilities( ...dieSizes: number[] ) {
+export function rollProbabilities( ...dieSizes: number[] ): IRollProbability[] {
     let rollCombos = [];
     dieSizes.forEach( dieSize => {
         if ( rollCombos.length === 0 ) {
